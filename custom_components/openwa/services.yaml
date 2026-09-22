@@ -1,0 +1,43 @@
+send_message:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: openwa
+    target:
+      required: true
+      example: "972501234567"
+      selector:
+        text:
+          multiple: true
+    title:
+      required: false
+      selector:
+        text:
+    message:
+      required: false
+      example: "The front door is open"
+      selector:
+        text:
+          multiline: true
+    media:
+      required: false
+      example: "/config/www/snapshot.jpg"
+      selector:
+        text:
+    media_type:
+      required: false
+      selector:
+        select:
+          translation_key: media_type
+          options:
+            - image
+            - video
+            - audio
+            - document
+    as_voice:
+      required: false
+      default: false
+      selector:
+        boolean:
