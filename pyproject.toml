@@ -1,0 +1,38 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["custom_components/openwa"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "A", "ASYNC", "B", "BLE", "C4", "D", "E", "F", "G", "I", "LOG", "N",
+    "PERF", "PIE", "PL", "PT", "RET", "RSE", "RUF", "S", "SIM", "T20",
+    "TRY", "UP", "W",
+]
+ignore = [
+    "D202", "D203", "D213", "PLR0911", "PLR0912", "PLR0913", "PLR2004",
+    "TRY003", "TRY400",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "S101", "PLR2004", "S105", "S106", "SLF001"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["custom_components.openwa"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
