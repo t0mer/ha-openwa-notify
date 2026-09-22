@@ -1,8 +1,13 @@
 {
   "domain": "openwa",
   "name": "OpenWA Notify",
-  "codeowners": ["@t0mer"],
+  "codeowners": [
+    "@t0mer"
+  ],
   "config_flow": true,
+  "dependencies": [
+    "notify"
+  ],
   "documentation": "https://github.com/t0mer/ha-openwa-notify",
   "integration_type": "service",
   "iot_class": "cloud_push",
