@@ -1,0 +1,33 @@
+name: Lint & Test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install dependencies
+        run: pip install -r requirements_test.txt
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Mypy
+        run: mypy custom_components/openwa
+      - name: Pytest
+        run: pytest --cov --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
