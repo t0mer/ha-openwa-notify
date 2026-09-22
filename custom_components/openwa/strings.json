@@ -1,0 +1,182 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to OpenWA",
+        "description": "Enter the address of your OpenWA gateway and an API key with the OPERATOR role.",
+        "data": {
+          "url": "OpenWA URL",
+          "api_key": "API key",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "url": "For example http://192.168.1.10:2785. A pasted Swagger URL (…/api/docs) is fine.",
+          "api_key": "Starts with owa_k1_. Create it in the OpenWA dashboard with the OPERATOR role."
+        }
+      },
+      "session": {
+        "title": "Select the WhatsApp session",
+        "description": "Choose the session to send from. Sessions not ready: {not_ready}. A session that is not ready can be added, but messages fail until it is connected in the OpenWA dashboard.",
+        "data": {
+          "session_id": "Session"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update the OpenWA API key",
+        "description": "The API key for {name} was rejected. Enter a new key with the OPERATOR role.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure OpenWA",
+        "description": "Leave the API key empty to keep the current one.",
+        "data": {
+          "url": "OpenWA URL",
+          "api_key": "API key",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to OpenWA.",
+      "invalid_auth": "The API key was rejected.",
+      "invalid_api_key_format": "The API key must look like owa_k1_ followed by 64 hex characters.",
+      "no_sessions": "No WhatsApp sessions are visible to this API key. Create one in the OpenWA dashboard first.",
+      "session_not_found": "Session not found.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This session is already configured.",
+      "reauth_successful": "The API key was updated.",
+      "reconfigure_successful": "The configuration was updated.",
+      "wrong_session": "A different session belongs in a separate entry. Add it as a new integration instead."
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Could not reach OpenWA: {detail}"
+    },
+    "invalid_auth": {
+      "message": "The OpenWA API key was rejected. Re-authenticate the integration."
+    },
+    "session_not_found": {
+      "message": "The OpenWA session no longer exists."
+    },
+    "forbidden": {
+      "message": "OpenWA refused the request (check the key has the OPERATOR role and access to this chat): {detail}"
+    },
+    "send_rejected": {
+      "message": "OpenWA rejected the message: {detail}"
+    },
+    "media_rejected_too_large": {
+      "message": "The media file is larger than the OpenWA server accepts (BODY_SIZE_LIMIT / MEDIA_DOWNLOAD_MAX_BYTES): {detail}"
+    },
+    "pacing_limited": {
+      "message": "The daily send limit of this session is reached. Retry in {retry_after} seconds."
+    },
+    "rate_limited": {
+      "message": "OpenWA is rate limiting requests. Try again shortly."
+    },
+    "send_failed": {
+      "message": "Sending failed for {failed} of {total} targets: {errors}"
+    },
+    "no_message": {
+      "message": "Provide a message, a title or media."
+    },
+    "no_target": {
+      "message": "Provide at least one target."
+    },
+    "invalid_target": {
+      "message": "Target {target} is not a phone number, chat id or group:<name>."
+    },
+    "international_format_required": {
+      "message": "Target {target} must be in international format, without a leading 0 (for example 972501234567)."
+    },
+    "group_not_found": {
+      "message": "Group {name} was not found."
+    },
+    "group_ambiguous": {
+      "message": "More than one group is named {name}; use its id instead: {ids}"
+    },
+    "text_too_long": {
+      "message": "The text is {length} characters; the limit is {limit}."
+    },
+    "caption_too_long": {
+      "message": "The caption is {length} characters; the limit is {limit}."
+    },
+    "path_not_absolute": {
+      "message": "Media path {path} must be absolute."
+    },
+    "path_not_allowed": {
+      "message": "Media path {path} is not allowed. Add its directory to allowlist_external_dirs in configuration.yaml."
+    },
+    "media_not_found": {
+      "message": "Media file {path} does not exist."
+    },
+    "media_unreadable": {
+      "message": "Media file {path} cannot be read by Home Assistant."
+    },
+    "media_too_large": {
+      "message": "Media file {path} is larger than {limit} MiB."
+    },
+    "invalid_data": {
+      "message": "Invalid notify data: {detail}"
+    },
+    "entry_not_loaded": {
+      "message": "OpenWA config entry {entry_id} is not loaded."
+    },
+    "no_loaded_entries": {
+      "message": "No OpenWA config entry is loaded."
+    },
+    "config_entry_required": {
+      "message": "More than one OpenWA entry is loaded; select one with config_entry_id."
+    }
+  },
+  "selector": {
+    "media_type": {
+      "options": {
+        "image": "Image",
+        "video": "Video",
+        "audio": "Audio",
+        "document": "Document"
+      }
+    }
+  },
+  "services": {
+    "send_message": {
+      "name": "Send WhatsApp message",
+      "description": "Sends a text, image, video, audio or document message through OpenWA.",
+      "fields": {
+        "config_entry_id": {
+          "name": "OpenWA session",
+          "description": "Entry to send from. Required when more than one is configured."
+        },
+        "target": {
+          "name": "Target",
+          "description": "Phone numbers in international format, chat ids (…@c.us, …@g.us, …@lid) or group:<name>."
+        },
+        "title": {
+          "name": "Title",
+          "description": "Shown in bold on the first line."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Message text, or the caption when media is sent."
+        },
+        "media": {
+          "name": "Media",
+          "description": "Absolute path to a file on the Home Assistant host inside allowlist_external_dirs."
+        },
+        "media_type": {
+          "name": "Media type",
+          "description": "Overrides the type detected from the file."
+        },
+        "as_voice": {
+          "name": "Send as voice note",
+          "description": "Audio only. Sends the audio as a voice note."
+        }
+      }
+    }
+  }
+}
