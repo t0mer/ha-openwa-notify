@@ -1,0 +1,12 @@
+{
+  "domain": "openwa",
+  "name": "OpenWA Notify",
+  "codeowners": ["@t0mer"],
+  "config_flow": true,
+  "documentation": "https://github.com/t0mer/ha-openwa-notify",
+  "integration_type": "service",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/t0mer/ha-openwa-notify/issues",
+  "requirements": [],
+  "version": "2026.9.0"
+}
