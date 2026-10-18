@@ -6,8 +6,8 @@
 [![Validate](https://github.com/t0mer/ha-openwa-notify/actions/workflows/validate.yml/badge.svg)](https://github.com/t0mer/ha-openwa-notify/actions/workflows/validate.yml)
 
 A Home Assistant integration that sends WhatsApp notifications (text, image,
-video, audio, voice notes and documents) to contacts and groups through a
-self-hosted [OpenWA](https://github.com/rmyndharis/OpenWA) gateway.
+video, audio, voice notes, documents and location pins) to contacts and groups
+through a self-hosted [OpenWA](https://github.com/rmyndharis/OpenWA) gateway.
 
 - UI setup (config flow), API-key rotation (reauth) and reconfigure.
 - `openwa.send_message` action with optional response (message ids per target).
@@ -59,10 +59,14 @@ key was revoked.
 | `config_entry_id` | if more than one entry | Entry (session) to send from. |
 | `target` | yes | One target or a list. See [target formats](#target-formats). |
 | `title` | no | Shown in bold on the first line. |
-| `message` | yes, unless `media` | Message text, or the caption when media is sent. |
+| `message` | yes, unless `media` or a location | Message text, or the caption when media is sent. |
 | `media` | no | Absolute path on the Home Assistant host. |
 | `media_type` | no | `image`, `video`, `audio` or `document`; overrides detection. |
 | `as_voice` | no | Audio only: send as a voice note. Default `false`. |
+| `latitude` | with `longitude` | Sends a location pin (-90 to 90). See [location](#location). |
+| `longitude` | with `latitude` | Sends a location pin (-180 to 180). |
+| `location_name` | no | Shown above the address on the pin. |
+| `address` | no | Shown under the name on the pin. |
 
 Limits: text up to 4096 characters, captions up to 1024.
 
@@ -123,6 +127,49 @@ Files over 50 MiB are rejected. OpenWA's default request body limit
 (`BODY_SIZE_LIMIT`, 25 MB) is reached first because the file is sent as base64,
 so with default server settings the practical limit is about 18 MiB.
 
+## Location
+
+Set `latitude` and `longitude` to send a WhatsApp location pin, optionally
+labelled with `location_name` and `address`. Both coordinates are required
+together; a name or address without coordinates is rejected. Coordinates may
+be numbers or templates that render to numbers.
+
+A location pin has no caption, so a `title` or `message` is sent first as a
+separate text message, followed by the pin. The returned `message_id` is the
+pin's. If the text is delivered but the pin fails, the target is reported as
+failed, so retrying the call sends the text again. A location cannot be
+combined with `media` in the same call.
+
+```yaml
+# Share where someone is when they leave a zone
+automation:
+  - alias: Alex left work
+    triggers:
+      - trigger: zone
+        entity_id: person.alex
+        zone: zone.work
+        event: leave
+    actions:
+      - action: openwa.send_message
+        data:
+          target: "972501234567"
+          message: Alex left work
+          latitude: "{{ state_attr('person.alex', 'latitude') }}"
+          longitude: "{{ state_attr('person.alex', 'longitude') }}"
+          location_name: Alex
+```
+
+```yaml
+# A fixed place, without text
+action: openwa.send_message
+data:
+  target: "group:Family"
+  latitude: 32.0853
+  longitude: 34.7818
+  location_name: Home
+  address: 1 Main St, Tel Aviv
+```
+
 ## Examples
 
 ```yaml
@@ -163,7 +210,9 @@ response_variable: sent
 ### Legacy notify
 
 Each entry also registers `notify.openwa_<entry title>` (for example
-`notify.openwa_home`). Media options go under `data`:
+`notify.openwa_home`). Media and location options (`media`, `media_type`,
+`as_voice`, `latitude`, `longitude`, `location_name`, `address`) go under
+`data`:
 
 ```yaml
 action: notify.openwa_home
@@ -174,6 +223,18 @@ data:
     - "972501234567"
   data:
     media: /config/www/snapshots/laundry.jpg
+```
+
+```yaml
+action: notify.openwa_home
+data:
+  message: I'm home
+  target:
+    - "972501234567"
+  data:
+    latitude: "{{ state_attr('device_tracker.phone', 'latitude') }}"
+    longitude: "{{ state_attr('device_tracker.phone', 'longitude') }}"
+    location_name: Home
 ```
 
 ```yaml
@@ -205,6 +266,8 @@ one too.
 | *The daily send limit of this session is reached* | OpenWA send pacing: wait for the given number of seconds. |
 | *must be in international format* | Use the country code and drop the leading `0`. |
 | *More than one group is named …* | Use the group's `@g.us` id. |
+| *invalid latitude* / *invalid longitude* | The template rendered `None` or text: the tracker has no GPS coordinates (for example a router-based tracker). Use an entity with `latitude`/`longitude` attributes. |
+| *A location name or address needs both latitude and longitude* | Add both coordinates, or drop `location_name` / `address`. |
 
 A successful send means OpenWA accepted the message. It does not confirm
 delivery, and a number that is not on WhatsApp is still accepted.
