@@ -88,7 +88,7 @@
       "message": "Provide at least one target."
     },
     "invalid_target": {
-      "message": "Target {target} is not a phone number, chat id or group:<name>."
+      "message": "Target {target} is not a phone number, chat id or group:NAME (e.g. group:Family)."
     },
     "international_format_required": {
       "message": "Target {target} must be in international format, without a leading 0 (for example 972501234567)."
@@ -160,7 +160,7 @@
         },
         "target": {
           "name": "Target",
-          "description": "Phone numbers in international format, chat ids (…@c.us, …@g.us, …@lid) or group:<name>."
+          "description": "Phone numbers in international format, chat ids (…@c.us, …@g.us, …@lid) or group:NAME (e.g. group:Family)."
         },
         "title": {
           "name": "Title",
