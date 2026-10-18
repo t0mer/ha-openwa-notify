@@ -66,4 +66,5 @@ def mock_client() -> Generator[AsyncMock]:
         client.list_groups.return_value = []
         client.send_text.return_value = {"messageId": "msg-text", "timestamp": 1}
         client.send_media.return_value = {"messageId": "msg-media", "timestamp": 1}
+        client.send_location.return_value = {"messageId": "msg-loc", "timestamp": 1}
         yield client

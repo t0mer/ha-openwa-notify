@@ -333,6 +333,44 @@ async def test_send_audio_not_voice(client: OpenWAClient, session: FakeSession) 
     }
 
 
+async def test_send_location_body(client: OpenWAClient, session: FakeSession) -> None:
+    """send-location posts coordinates plus the name as description."""
+    session.add(FakeResponse(status=201, json=SEND_OK))
+    assert (
+        await client.send_location(
+            SESSION_ID, CHAT, 32.0853, 34.7818, name="Office", address="1 Main St"
+        )
+        == SEND_OK
+    )
+    call = session.calls[0]
+    assert call["method"] == "POST"
+    assert call["url"] == f"{API}/sessions/{SESSION_ID}/messages/send-location"
+    assert call["json"] == {
+        "chatId": CHAT,
+        "latitude": 32.0853,
+        "longitude": 34.7818,
+        "description": "Office",
+        "address": "1 Main St",
+    }
+    assert call["timeout"].total == 30
+    assert call["allow_redirects"] is False
+    assert call["headers"]["X-API-Key"] == FAKE_KEY
+
+
+@pytest.mark.parametrize(("name", "address"), [(None, None), ("", "")])
+async def test_send_location_minimal_body(
+    client: OpenWAClient, session: FakeSession, name: str | None, address: str | None
+) -> None:
+    """Empty or missing labels are omitted; zero coordinates are kept."""
+    session.add(FakeResponse(status=201, json=SEND_OK))
+    await client.send_location(SESSION_ID, CHAT, 0.0, 0.0, name=name, address=address)
+    assert session.calls[0]["json"] == {
+        "chatId": CHAT,
+        "latitude": 0.0,
+        "longitude": 0.0,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Error mapping (CLAUDE.md §3)
 # ---------------------------------------------------------------------------

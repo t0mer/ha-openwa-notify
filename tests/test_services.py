@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.openwa import services
 from custom_components.openwa.api import (
@@ -480,6 +481,152 @@ async def test_media_too_large(
         await send(target=PHONE, message="m", media=str(path))
     assert exc.value.translation_key == "media_too_large"
     mock_client.send_media.assert_not_awaited()
+
+
+# --- location --------------------------------------------------------------
+
+
+async def test_location_only(send: SendFn, mock_client: AsyncMock) -> None:
+    """A location pin can be sent without any text."""
+    response = await send(
+        return_response=True,
+        target=PHONE,
+        latitude=32.0853,
+        longitude=34.7818,
+        location_name="Home",
+        address="1 Main St",
+    )
+    mock_client.send_location.assert_awaited_once_with(
+        SESSION_ID, CHAT, 32.0853, 34.7818, name="Home", address="1 Main St"
+    )
+    mock_client.send_text.assert_not_awaited()
+    mock_client.send_media.assert_not_awaited()
+    assert response["results"] == [{"target": CHAT, "message_id": "msg-loc"}]
+
+
+async def test_location_with_text_sends_text_first(
+    send: SendFn, mock_client: AsyncMock
+) -> None:
+    """Text goes out before the pin; the response carries the pin's id."""
+    order = MagicMock()
+    order.attach_mock(mock_client.send_text, "send_text")
+    order.attach_mock(mock_client.send_location, "send_location")
+    response = await send(
+        return_response=True,
+        target=PHONE,
+        title="Arrived",
+        message="Alex is home",
+        latitude=32.0853,
+        longitude=34.7818,
+    )
+    assert order.mock_calls == [
+        call.send_text(SESSION_ID, CHAT, "*Arrived*\nAlex is home"),
+        call.send_location(SESSION_ID, CHAT, 32.0853, 34.7818, name=None, address=None),
+    ]
+    assert response["results"] == [{"target": CHAT, "message_id": "msg-loc"}]
+
+
+async def test_location_template_strings_coerced(
+    send: SendFn, mock_client: AsyncMock
+) -> None:
+    """Rendered templates arrive as strings and are coerced to floats."""
+    await send(target=PHONE, latitude="-33.8688", longitude="151.2093")
+    mock_client.send_location.assert_awaited_once_with(
+        SESSION_ID, CHAT, -33.8688, 151.2093, name=None, address=None
+    )
+
+
+async def test_location_multiple_targets(send: SendFn, mock_client: AsyncMock) -> None:
+    """Each target receives the pin."""
+    await send(target=[PHONE, "15551234567"], latitude=1.5, longitude=2.5)
+    assert mock_client.send_location.await_count == 2
+    mock_client.send_location.assert_any_await(
+        SESSION_ID, "15551234567@c.us", 1.5, 2.5, name=None, address=None
+    )
+
+
+@pytest.mark.parametrize(
+    "coords",
+    [
+        {"latitude": 91, "longitude": 0},
+        {"latitude": 0, "longitude": -180.5},
+        {"latitude": "north", "longitude": 0},
+        {"latitude": 32.0},
+        {"longitude": 34.0},
+    ],
+)
+async def test_location_invalid_coordinates(
+    send: SendFn, mock_client: AsyncMock, coords: dict[str, Any]
+) -> None:
+    """Out-of-range, non-numeric or unpaired coordinates fail schema validation."""
+    with pytest.raises(vol.Invalid):
+        await send(target=PHONE, **coords)
+    mock_client.send_location.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "labels", [{"location_name": "Home"}, {"address": "1 Main St"}]
+)
+async def test_location_incomplete(
+    send: SendFn, mock_client: AsyncMock, labels: dict[str, str]
+) -> None:
+    """A name or address without coordinates is rejected, not dropped."""
+    with pytest.raises(ServiceValidationError) as exc:
+        await send(target=PHONE, message="hi", **labels)
+    assert exc.value.translation_key == "location_incomplete"
+    mock_client.send_text.assert_not_awaited()
+
+
+async def test_location_with_media_rejected(
+    send: SendFn, mock_client: AsyncMock, media_dir: Path
+) -> None:
+    """Location and media cannot be combined in one call."""
+    path = _file(media_dir, "snap.jpg")
+    with pytest.raises(ServiceValidationError) as exc:
+        await send(target=PHONE, media=str(path), latitude=1, longitude=2)
+    assert exc.value.translation_key == "location_with_media"
+    mock_client.send_media.assert_not_awaited()
+    mock_client.send_location.assert_not_awaited()
+
+
+async def test_location_blank_labels_dropped(
+    send: SendFn, mock_client: AsyncMock
+) -> None:
+    """Whitespace-only labels are trimmed away, not sent as blank labels."""
+    await send(target=PHONE, latitude=1, longitude=2, location_name="  ", address=" ")
+    mock_client.send_location.assert_awaited_once_with(
+        SESSION_ID, CHAT, 1.0, 2.0, name=None, address=None
+    )
+
+
+async def test_location_blank_labels_without_coordinates(
+    send: SendFn, mock_client: AsyncMock
+) -> None:
+    """Blank labels without coordinates are ignored like absent ones."""
+    await send(target=PHONE, message="hi", location_name=" ")
+    mock_client.send_text.assert_awaited_once_with(SESSION_ID, CHAT, "hi")
+    mock_client.send_location.assert_not_awaited()
+
+
+async def test_location_pin_fails_after_text(
+    send: SendFn, mock_client: AsyncMock
+) -> None:
+    """The text is already sent when the pin fails; the target is reported failed."""
+    mock_client.send_location.side_effect = OpenWAConnectionError("down")
+    response = await send(
+        return_response=True, target=PHONE, message="hi", latitude=1, longitude=2
+    )
+    mock_client.send_text.assert_awaited_once_with(SESSION_ID, CHAT, "hi")
+    assert response["results"] == []
+    assert [f["target"] for f in response["failed"]] == [PHONE]
+
+
+async def test_location_send_error(send: SendFn, mock_client: AsyncMock) -> None:
+    """A failed pin is reported like any other send failure."""
+    mock_client.send_location.side_effect = OpenWAConnectionError("down")
+    with pytest.raises(HomeAssistantError) as exc:
+        await send(target=PHONE, latitude=1, longitude=2)
+    assert exc.value.translation_key == "send_failed"
 
 
 # --- multi-target partial failure ------------------------------------------
