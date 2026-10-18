@@ -1,9 +1,9 @@
-"""Pure helpers: URL/key validation, text composition, targets, media."""
+"""Pure helpers: URL/key validation, text composition, targets, media, location."""
 
 from __future__ import annotations
 
 import base64
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import logging
 import mimetypes
@@ -19,6 +19,10 @@ from homeassistant.exceptions import ServiceValidationError
 from .api import MediaKind
 from .const import (
     API_KEY_PATTERN,
+    ATTR_ADDRESS,
+    ATTR_LATITUDE,
+    ATTR_LOCATION_NAME,
+    ATTR_LONGITUDE,
     DOMAIN,
     GROUP_PREFIX,
     MAX_CAPTION_LENGTH,
@@ -118,6 +122,31 @@ def match_group(name: str, groups: list[dict[str, Any]]) -> str | None:
     if len(ids) > 1:
         raise _invalid("group_ambiguous", name=name, ids=", ".join(ids))
     return ids[0] if ids else None
+
+
+@dataclass(frozen=True, slots=True)
+class Location:
+    """A location pin to send."""
+
+    latitude: float
+    longitude: float
+    name: str | None = None
+    address: str | None = None
+
+
+def location_from(data: Mapping[str, Any]) -> Location | None:
+    """Build a location from validated call data, or None when absent.
+
+    The schemas pair latitude and longitude; a name or address on its own
+    is rejected so it is not silently dropped. Blank labels count as absent.
+    """
+    name = (data.get(ATTR_LOCATION_NAME) or "").strip() or None
+    address = (data.get(ATTR_ADDRESS) or "").strip() or None
+    if ATTR_LATITUDE not in data:
+        if name or address:
+            raise _invalid("location_incomplete")
+        return None
+    return Location(data[ATTR_LATITUDE], data[ATTR_LONGITUDE], name, address)
 
 
 @dataclass(frozen=True, slots=True)

@@ -19,6 +19,10 @@ ATTR_MESSAGE: Final = "message"
 ATTR_MEDIA: Final = "media"
 ATTR_MEDIA_TYPE: Final = "media_type"
 ATTR_AS_VOICE: Final = "as_voice"
+ATTR_LATITUDE: Final = "latitude"
+ATTR_LONGITUDE: Final = "longitude"
+ATTR_LOCATION_NAME: Final = "location_name"
+ATTR_ADDRESS: Final = "address"
 
 SERVICE_SEND_MESSAGE: Final = "send_message"
 

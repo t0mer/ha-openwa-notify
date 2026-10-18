@@ -161,6 +161,28 @@ class OpenWAClient:
             body["ptt"] = True
         return await self._send(session_id, f"send-{kind}", body, MEDIA_TIMEOUT)
 
+    async def send_location(
+        self,
+        session_id: str,
+        chat_id: str,
+        latitude: float,
+        longitude: float,
+        *,
+        name: str | None = None,
+        address: str | None = None,
+    ) -> dict[str, Any]:
+        """Send a location pin, optionally labelled with a name and address."""
+        body: dict[str, Any] = {
+            "chatId": chat_id,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+        if name:
+            body["description"] = name
+        if address:
+            body["address"] = address
+        return await self._send(session_id, "send-location", body, TIMEOUT)
+
     async def _send(
         self, session_id: str, endpoint: str, body: dict[str, Any], timeout: int
     ) -> dict[str, Any]:

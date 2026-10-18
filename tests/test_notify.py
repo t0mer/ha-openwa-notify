@@ -138,6 +138,72 @@ async def test_invalid_data(hass: HomeAssistant, mock_client: AsyncMock) -> None
 
 
 @pytest.mark.usefixtures("loaded_entry")
+async def test_send_location(hass: HomeAssistant, mock_client: AsyncMock) -> None:
+    """data.latitude / longitude / location_name / address send a pin."""
+    await _notify(
+        hass,
+        {
+            "message": "I'm home",
+            "target": ["15551234567"],
+            "data": {
+                "latitude": "32.0853",
+                "longitude": 34.7818,
+                "location_name": "Home",
+                "address": "1 Main St",
+            },
+        },
+    )
+    mock_client.send_text.assert_awaited_once_with(
+        SESSION_ID, "15551234567@c.us", "I'm home"
+    )
+    mock_client.send_location.assert_awaited_once_with(
+        SESSION_ID,
+        "15551234567@c.us",
+        32.0853,
+        34.7818,
+        name="Home",
+        address="1 Main St",
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [{"latitude": 32.0}, {"latitude": 100, "longitude": 0}],
+)
+@pytest.mark.usefixtures("loaded_entry")
+async def test_invalid_location_data(
+    hass: HomeAssistant, mock_client: AsyncMock, data: dict
+) -> None:
+    """Unpaired or out-of-range coordinates are invalid data."""
+    with pytest.raises(ServiceValidationError) as exc:
+        await _notify(hass, {"message": "hi", "target": ["15551234567"], "data": data})
+    assert exc.value.translation_key == "invalid_data"
+    mock_client.send_location.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("data", "key"),
+    [
+        ({"location_name": "Home"}, "location_incomplete"),
+        (
+            {"media": "/config/www/a.jpg", "latitude": 1, "longitude": 2},
+            "location_with_media",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("loaded_entry")
+async def test_location_rejected(
+    hass: HomeAssistant, mock_client: AsyncMock, data: dict, key: str
+) -> None:
+    """Location errors from the shared send routine surface through notify."""
+    with pytest.raises(ServiceValidationError) as exc:
+        await _notify(hass, {"message": "hi", "target": ["15551234567"], "data": data})
+    assert exc.value.translation_key == key
+    mock_client.send_text.assert_not_awaited()
+    mock_client.send_location.assert_not_awaited()
+
+
+@pytest.mark.usefixtures("loaded_entry")
 async def test_send_failure_raises(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     """A failed send raises HomeAssistantError."""
     mock_client.send_text.side_effect = OpenWAConnectionError("down")

@@ -28,7 +28,11 @@ from .api import (
     OpenWAValidationError,
 )
 from .const import (
+    ATTR_ADDRESS,
     ATTR_AS_VOICE,
+    ATTR_LATITUDE,
+    ATTR_LOCATION_NAME,
+    ATTR_LONGITUDE,
     ATTR_MEDIA,
     ATTR_MEDIA_TYPE,
     ATTR_MESSAGE,
@@ -42,10 +46,12 @@ from .const import (
     SERVICE_SEND_MESSAGE,
 )
 from .helpers import (
+    Location,
     Media,
     Target,
     check_length,
     compose_text,
+    location_from,
     match_group,
     parse_target,
     read_media,
@@ -67,6 +73,10 @@ SEND_MESSAGE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_MEDIA): cv.string,
         vol.Optional(ATTR_MEDIA_TYPE): vol.In(MEDIA_TYPES),
         vol.Optional(ATTR_AS_VOICE, default=False): cv.boolean,
+        vol.Inclusive(ATTR_LATITUDE, "location"): cv.latitude,
+        vol.Inclusive(ATTR_LONGITUDE, "location"): cv.longitude,
+        vol.Optional(ATTR_LOCATION_NAME): cv.string,
+        vol.Optional(ATTR_ADDRESS): cv.string,
     }
 )
 
@@ -135,9 +145,24 @@ async def _async_send_one(
     text: str,
     media: Media | None,
     as_voice: bool,
+    *,
+    location: Location | None,
 ) -> str | None:
     """Send the message to one chat and return the message id."""
     client, session_id = data.client, data.session_id
+    if location is not None:
+        # Location pins carry no caption: send the text first, then the pin.
+        if text:
+            await client.send_text(session_id, chat_id, text)
+        result = await client.send_location(
+            session_id,
+            chat_id,
+            location.latitude,
+            location.longitude,
+            name=location.name,
+            address=location.address,
+        )
+        return cast(str | None, result.get("messageId"))
     if media is None:
         result = await client.send_text(session_id, chat_id, text)
         return cast(str | None, result.get("messageId"))
@@ -168,6 +193,7 @@ async def async_send(
     media: str | None = None,
     media_type: MediaKind | None = None,
     as_voice: bool = False,
+    location: Location | None = None,
     raise_on_failure: bool = True,
 ) -> dict[str, list[dict[str, Any]]]:
     """Send a message to each target sequentially.
@@ -177,7 +203,11 @@ async def async_send(
     ``raise_on_failure`` is set, raised together after all were attempted.
     """
     text = compose_text(title, message)
-    if not text and not media:
+    if location is not None and media:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="location_with_media"
+        )
+    if not text and not media and location is None:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="no_message"
         )
@@ -202,7 +232,7 @@ async def async_send(
                 data, cast(str, target.group_name)
             )
             message_id = await _async_send_one(
-                data, chat_id, text, loaded_media, as_voice
+                data, chat_id, text, loaded_media, as_voice, location=location
             )
         except OpenWAError as err:
             error = _to_ha_error(hass, err, entry)
@@ -273,6 +303,7 @@ def async_register_services(hass: HomeAssistant) -> None:
             media=call.data.get(ATTR_MEDIA),
             media_type=call.data.get(ATTR_MEDIA_TYPE),
             as_voice=call.data[ATTR_AS_VOICE],
+            location=location_from(call.data),
             raise_on_failure=not call.return_response,
         )
         return cast(ServiceResponse, response) if call.return_response else None
