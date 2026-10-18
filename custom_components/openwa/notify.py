@@ -13,7 +13,18 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 import voluptuous as vol
 
-from .const import ATTR_AS_VOICE, ATTR_MEDIA, ATTR_MEDIA_TYPE, DOMAIN, MEDIA_TYPES
+from .const import (
+    ATTR_ADDRESS,
+    ATTR_AS_VOICE,
+    ATTR_LATITUDE,
+    ATTR_LOCATION_NAME,
+    ATTR_LONGITUDE,
+    ATTR_MEDIA,
+    ATTR_MEDIA_TYPE,
+    DOMAIN,
+    MEDIA_TYPES,
+)
+from .helpers import location_from
 from .services import async_send
 
 if TYPE_CHECKING:
@@ -24,6 +35,10 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(ATTR_MEDIA): cv.string,
         vol.Optional(ATTR_MEDIA_TYPE): vol.In(MEDIA_TYPES),
         vol.Optional(ATTR_AS_VOICE, default=False): cv.boolean,
+        vol.Inclusive(ATTR_LATITUDE, "location"): cv.latitude,
+        vol.Inclusive(ATTR_LONGITUDE, "location"): cv.longitude,
+        vol.Optional(ATTR_LOCATION_NAME): cv.string,
+        vol.Optional(ATTR_ADDRESS): cv.string,
     }
 )
 
@@ -77,4 +92,5 @@ class OpenWANotificationService(BaseNotificationService):
             media=data.get(ATTR_MEDIA),
             media_type=data.get(ATTR_MEDIA_TYPE),
             as_voice=data[ATTR_AS_VOICE],
+            location=location_from(data),
         )
