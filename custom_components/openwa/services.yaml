@@ -41,3 +41,31 @@ send_message:
       default: false
       selector:
         boolean:
+    latitude:
+      required: false
+      example: 32.0853
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: any
+          mode: box
+    longitude:
+      required: false
+      example: 34.7818
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: any
+          mode: box
+    location_name:
+      required: false
+      example: "Home"
+      selector:
+        text:
+    address:
+      required: false
+      example: "1 Main St, Tel Aviv"
+      selector:
+        text:

@@ -82,7 +82,7 @@
       "message": "Sending failed for {failed} of {total} targets: {errors}"
     },
     "no_message": {
-      "message": "Provide a message, a title or media."
+      "message": "Provide a message, a title, media or a location."
     },
     "no_target": {
       "message": "Provide at least one target."
@@ -131,6 +131,12 @@
     },
     "config_entry_required": {
       "message": "More than one OpenWA entry is loaded; select one with config_entry_id."
+    },
+    "location_incomplete": {
+      "message": "A location name or address needs both latitude and longitude."
+    },
+    "location_with_media": {
+      "message": "A location cannot be sent together with media; send them in separate calls."
     }
   },
   "selector": {
@@ -146,7 +152,7 @@
   "services": {
     "send_message": {
       "name": "Send WhatsApp message",
-      "description": "Sends a text, image, video, audio or document message through OpenWA.",
+      "description": "Sends a text, image, video, audio, document or location message through OpenWA.",
       "fields": {
         "config_entry_id": {
           "name": "OpenWA session",
@@ -162,7 +168,7 @@
         },
         "message": {
           "name": "Message",
-          "description": "Message text, or the caption when media is sent."
+          "description": "Message text, or the caption when media is sent. With a location, sent as a separate message before the pin."
         },
         "media": {
           "name": "Media",
@@ -175,6 +181,22 @@
         "as_voice": {
           "name": "Send as voice note",
           "description": "Audio only. Sends the audio as a voice note."
+        },
+        "latitude": {
+          "name": "Latitude",
+          "description": "Sends a location pin. Requires longitude."
+        },
+        "longitude": {
+          "name": "Longitude",
+          "description": "Sends a location pin. Requires latitude."
+        },
+        "location_name": {
+          "name": "Location name",
+          "description": "Shown above the address on the location pin."
+        },
+        "address": {
+          "name": "Address",
+          "description": "Shown under the name on the location pin."
         }
       }
     }
